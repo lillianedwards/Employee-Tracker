@@ -74,12 +74,14 @@ const viewRoles = async () => {
 };
 
 const viewEmployees = async () => {
-  const employeeResult = await query(`SELECT e.id, CONCAT(e.first_name, " ", e.last_name) AS name, r.title, CONCAT(e2.first_name, " ", e2.last_name) AS manager
+  const employeeResult = await query(`SELECT e.id, CONCAT(e.first_name, " ", e.last_name) AS name, r.title, d.name AS department, CONCAT(e2.first_name, " ", e2.last_name) AS manager, r.salary
   FROM employee AS e
   JOIN role AS r 
   ON e.role_id = r.id
-  LEFT JOIN employee as e2
+  LEFT JOIN employee AS e2
   ON e.manager_id = e2.id
+  JOIN department AS d
+  ON d.id = r.department_id
   ORDER BY e.id;`);
   console.table(employeeResult);
   init(); 
