@@ -23,7 +23,7 @@ const initialQuestion = [
       "Add Department",
       "Add Role",
       "Add Employee",
-      // "Update Employee",
+      "Update Employee",
       "Quit",
     ],
   },
@@ -52,6 +52,7 @@ const init = async () => {
       break;
     case "Update Employee":
       updateEmployee();
+      break;
     case "Quit":
       quit();
       break;
@@ -72,14 +73,17 @@ const viewRoles = async () => {
   init();
 };
 
-//SHOULD THIS HAVE MANAGERS NAMES INSTEAD OF THE MANAGER's EMPLOYEE ID
 const viewEmployees = async () => {
-  const employeeResult = await query("SELECT * FROM employee");
+  const employeeResult = await query(`SELECT e.id, CONCAT(e.first_name, " ", e.last_name) AS name, r.title, CONCAT(e2.first_name, " ", e2.last_name) AS manager
+  FROM employee AS e
+  JOIN role AS r 
+  ON e.role_id = r.id
+  LEFT JOIN employee as e2
+  ON e.manager_id = e2.id
+  ORDER BY e.id;`);
   console.table(employeeResult);
-  init();
+  init(); 
 };
-
-//UPDATING AS A STRING OF "0" RATHER THAN THE INPUTTED TEXT it's fixed now don't worry :-)
 
 const addDepartment = async () => {
   const addDepartmentQuestions = [
@@ -127,8 +131,12 @@ const addRole = async () => {
 addEmployee = async () => {
   const roles = await query("SELECT title AS name, id AS value FROM role");
   const managers = await query(
-    "SELECT CONCAT(first_name, last_name) as name, id AS value FROM employee WHERE manager_id IS null"
+    "SELECT CONCAT(first_name, ' ', last_name) as name, id AS value FROM employee WHERE manager_id IS null"
   );
+  managers.push({
+    name: "No Manager",
+    value: null,
+  });
   console.log(roles);
   const addEmployeeQuestions = [
     {
@@ -166,15 +174,45 @@ addEmployee = async () => {
 
 updateEmployee = async () => {
   const employeeUpdateOptions = await query(
-    "SELECT CONCAT(first_name, last_name) as name, id AS value, FROM employee"
+    "SELECT CONCAT(first_name, ' ', last_name) as name, id AS value FROM employee"
   );
+  const roles = await query("SELECT title AS name, id AS value FROM role");
+  const managers = await query(
+    "SELECT CONCAT(first_name, ' ', last_name) as name, id AS value FROM employee WHERE manager_id IS null"
+  );
+  managers.push({
+    name: "No Manager",
+    value: null,
+  });
   const updateEmployeeQuestions = [
     {
       type: "list",
       message: "Select the employee you would like to work with.",
-      name: "",
+      name: "id",
+      choices: employeeUpdateOptions,
+    },
+    {
+      type: "list",
+      message: "Select the role this employee now holds.",
+      name: "role_id",
+      choices: roles,
+    },
+    {
+      type: "list",
+      message: "Select the manager this employee will be under, if applicable.",
+      name: "manager_id",
+      choices: managers,
     },
   ];
+  const { id, role_id, manager_id } = await inquirer.prompt(
+    updateEmployeeQuestions
+  );
+  await query("UPDATE employee SET role_id =?, manager_id =? WHERE id=?", [
+    role_id,
+    manager_id,
+    id,
+  ]);
+  viewEmployees();
 };
 
 const quit = () => {
